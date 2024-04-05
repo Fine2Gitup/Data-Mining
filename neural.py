@@ -1,10 +1,9 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import torch
-from torch import nn, optim
 import torch.nn.functional as F
+from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
-from numpy.random import RandomState
 
 
 class CustomizedDataset(Dataset):
@@ -27,17 +26,7 @@ class CustomizedDataset(Dataset):
 
 
 def load():
-    # df = pd.read_csv("train.csv", sep=',')
-    # df.info()
-    # df = df.drop('area_code', axis=1)
-    # df = df.drop('state', axis=1)
-    # df['international_plan'] = df['international_plan'].replace({'yes': 1, 'no': 0})
-    # df['voice_mail_plan'] = df['voice_mail_plan'].replace({'yes': 1, 'no': 0})
-    # df['churn'] = df['churn'].replace({'yes': 1, 'no': 0})
-
     df = pd.read_csv("Train1.0.csv", sep=',', index_col=0)
-
-    # df['split'] = np.random.randn(df.shape[0], 1)
 
     msk = np.random.rand(len(df)) <= 0.75
     train = df[msk]
@@ -61,9 +50,6 @@ def load():
     train_set = CustomizedDataset(train_data, train_labels, transform=None)
     test_set = CustomizedDataset(test_data, test_labels, transform=None)
 
-    print(train_set[10][0])
-    print(train_set[10][1])
-
     train_loader = DataLoader(train_set, batch_size=16, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=16, shuffle=True)
     return train_loader, test_loader
@@ -72,12 +58,13 @@ def load():
 class FCNet(nn.Module):
     def __init__(self):
         super(FCNet, self).__init__()
-        self.bn = nn.BatchNorm1d(12)
-        self.fc1 = nn.Linear(12, 9)
-        self.fc2 = nn.Linear(9, 6)
+        # self.bn = nn.BatchNorm1d(12)
+        self.fc1 = nn.Linear(12, 12)
+        self.fc2 = nn.Linear(12, 6)
         self.fc3 = nn.Linear(6, 2)
 
     def forward(self, x):
+        # x = self.bn(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -87,11 +74,13 @@ class FCNet(nn.Module):
 def train(train_loader: DataLoader):
     net = FCNet()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.008, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [150, 300, 500, 700], gamma=0.8)
 
     print("Start Training...")
-    for epoch in range(500):
-        loss10 = 0.0
+    for epoch in range(1000):
+        loss_all = 0.0
+        n = len(train_loader)
         for i, data in enumerate(train_loader):
             inputs, labels = data
             optimizer.zero_grad()
@@ -99,11 +88,10 @@ def train(train_loader: DataLoader):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            loss10 += loss.item()
-            if i % 10 == 9:
-                print('[Epoch %d, Batch %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, loss10 / 10))
-                loss10 = 0.0
+            loss_all += loss.item()
+
+        print('[Epoch %d] loss: %.3f' % (epoch + 1, loss_all / n))
+        scheduler.step()
 
     print("Done Training!")
     return net
@@ -118,7 +106,7 @@ def test(test_loader: DataLoader, net):
             outputs = net(rows)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
-            print(predicted)
+            # print(predicted)
             correct += (predicted == labels).sum().item()
 
     print('Accuracy of the network on the test set: %.3f' % (correct / total))
@@ -128,3 +116,4 @@ if __name__ == '__main__':
     train_loader, test_loader = load()
     net = train(train_loader)
     test(test_loader, net)
+    test(train_loader, net)
