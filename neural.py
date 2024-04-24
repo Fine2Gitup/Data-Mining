@@ -30,19 +30,19 @@ class CustomizedDataset(Dataset):
 def load():
     df = pd.read_csv("Train1.0.csv", sep=',', index_col=0)
 
-    # msk = np.random.rand(len(df)) <= 0.75
-    # train = df[msk]
-    # test = df[~msk]
-    train = df
-    test = pd.read_csv("Test1.0.csv", sep=',', index_col=0)
+    msk = np.random.rand(len(df)) <= 0.75
+    train = df[msk]
+    test = df[~msk]
+    # train = df
+    # test = pd.read_csv("Test1.0.csv", sep=',', index_col=0)
 
     train_labels = train['churn'].values
-    # test_labels = test['churn'].values
-    test_labels = [1 for _ in range(len(test))]
+    test_labels = test['churn'].values
+    # test_labels = [1 for _ in range(len(test))]
 
     train_data = train.drop('churn', axis=1)
-    # test_data = test.drop('churn', axis=1)
-    test_data = test.drop('id', axis=1)
+    test_data = test.drop('churn', axis=1)
+    # test_data = test.drop('id', axis=1)
 
     min = train_data.min()
     max = train_data.max()
@@ -139,6 +139,6 @@ if __name__ == '__main__':
     predicted = 1
     train_loader, test_loader = load()
     net = train(train_loader)
-    # test_on_train_set(test_loader, net)
+    test_on_train_set(test_loader, net)
     test_on_train_set(train_loader, net)
-    out_print_test_results(test_loader, net)
+    # out_print_test_results(test_loader, net)
